@@ -1,18 +1,24 @@
+import os
 from flask import Flask, request, jsonify
 import requests
 from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
+JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
+JIRA_EMAIL = os.getenv("JIRA_EMAIL")
+JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
+JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
 # TogetherAI config
 TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
-TOGETHER_API_KEY = "tgp_v1_394T07oT4_rqqerC3hQ1wcLaFYPrwrN6Zq14LTdUi0g"
+#TOGETHER_API_KEY = "tgp_v1_394T07oT4_rqqerC3hQ1wcLaFYPrwrN6Zq14LTdUi0g"
 
 # Jira config
-JIRA_BASE_URL = "https://growtharc-team-wm1ai8h6.atlassian.net"
-JIRA_EMAIL = "thirupathi.jangapally@growtharc.com"
-JIRA_API_TOKEN = "ATATT3xFfGF0mhY0CAF4Z3rpfenT09bWAN-YnJ-KVSBtc7Yxil3ncipblpBPDnGtF19w_9sM08T1jdkfvOmNW4IogRo5xBs3zSuZQ7spGhuabMWZXVN9hCtSZRVRbECQdN36LtZtOCAUVcXMfeYCqhLq_3bbNLNvc5zDQ7BTfSsmEW6fnlFLDXA=03A196C7"
-JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
+#JIRA_BASE_URL = "https://growtharc-team-wm1ai8h6.atlassian.net"
+#JIRA_EMAIL = "thirupathi.jangapally@growtharc.com"
+#JIRA_API_TOKEN = "ATATT3xFfGF0mhY0CAF4Z3rpfenT09bWAN-YnJ-KVSBtc7Yxil3ncipblpBPDnGtF19w_9sM08T1jdkfvOmNW4IogRo5xBs3zSuZQ7spGhuabMWZXVN9hCtSZRVRbECQdN36LtZtOCAUVcXMfeYCqhLq_3bbNLNvc5zDQ7BTfSsmEW6fnlFLDXA=03A196C7"
+#JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
 
 JIRA_HEADERS = {
     "Accept": "application/json",
