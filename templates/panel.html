@@ -1,74 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Generate Test Cases</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 10px;
-    }
-    button {
-      padding: 10px 15px;
-      background-color: #0052CC;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-  </style>
+    <title>Generate Test Cases</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </head>
 <body>
-  <button id="generate-test-cases">Generate Test Cases</button>
-
-  <script>
-    document.addEventListener("DOMContentLoaded", async function () {
-      const button = document.getElementById("generate-test-cases");
-      button.onclick = async function () {
-        const issueKey = new URLSearchParams(window.location.search).get("issueKey");
-
-        if (!issueKey) {
-          alert("⚠️ Issue key not found.");
-          return;
-        }
-
-        let summary = "";
-
-        try {
-          summary = parent.document.querySelector("#summary-val")?.innerText?.trim();
-        } catch (err) {
-          alert("⚠️ Could not read the issue summary.");
-          return;
-        }
-
-        if (!summary) {
-          alert("⚠️ Summary is empty.");
-          return;
-        }
-
-        try {
-          const response = await fetch("https://jira-testcase-generator.onrender.com/generate", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              issue_key: issueKey,
-              user_story: summary
-            })
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(errorText || response.statusText);
-          }
-
-          alert("✅ Test cases created successfully!");
-
-        } catch (error) {
-          alert("❌ Failed to generate test cases:\n" + error.message);
-        }
-      };
-    });
-  </script>
+    <h2>Generate Test Cases</h2>
+    <p>Issue Key: <strong>{{ issue_key }}</strong></p>
+    <button onclick="generate('{{ issue_key }}')">Generate Test Cases</button>
+    <div id="status"></div>
 </body>
 </html>
