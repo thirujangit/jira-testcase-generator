@@ -82,6 +82,11 @@ def panel():
     issue_key = request.args.get("issueKey")
     return render_template("panel.html", issue_key=issue_key)
 
+@app.after_request
+def allow_iframe(response):
+    response.headers['X-Frame-Options'] = 'ALLOWALL'
+    return response
+    
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port, debug=True)
