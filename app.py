@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -10,15 +10,8 @@ JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 JIRA_EMAIL = os.getenv("JIRA_EMAIL")
 JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
-# TogetherAI config
-TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
-#TOGETHER_API_KEY = "tgp_v1_394T07oT4_rqqerC3hQ1wcLaFYPrwrN6Zq14LTdUi0g"
 
-# Jira config
-#JIRA_BASE_URL = "https://growtharc-team-wm1ai8h6.atlassian.net"
-#JIRA_EMAIL = "thirupathi.jangapally@growtharc.com"
-#JIRA_API_TOKEN = "ATATT3xFfGF0mhY0CAF4Z3rpfenT09bWAN-YnJ-KVSBtc7Yxil3ncipblpBPDnGtF19w_9sM08T1jdkfvOmNW4IogRo5xBs3zSuZQ7spGhuabMWZXVN9hCtSZRVRbECQdN36LtZtOCAUVcXMfeYCqhLq_3bbNLNvc5zDQ7BTfSsmEW6fnlFLDXA=03A196C7"
-#JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
+TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
 
 JIRA_HEADERS = {
     "Accept": "application/json",
@@ -51,7 +44,6 @@ def generate_test_cases(user_story):
 
 def create_subtask(parent_key, summary, description):
     url = f"{JIRA_BASE_URL}/rest/api/3/issue"
-
     payload = {
         "fields": {
             "project": {"key": parent_key.split('-')[0]},
@@ -77,16 +69,18 @@ def generate():
 
     try:
         test_cases_text = generate_test_cases(user_story)
-
-        # Split test cases (simple split by newline or numbering)
         test_cases = [tc.strip() for tc in test_cases_text.split('\n') if tc.strip()]
         for tc in test_cases:
             create_subtask(issue_key, tc[:50], tc)
 
         return jsonify({"message": "Test cases added as subtasks", "count": len(test_cases)})
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/panel')
+def panel():
+    issue_key = request.args.get("issueKey")
+    return render_template("panel.html", issue_key=issue_key)
 
 if __name__ == '__main__':
     app.run(debug=True)
