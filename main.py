@@ -88,6 +88,7 @@ def create_subtask(parent_key, summary, description):
     )
 
     if response.status_code != 201:
+        error_detail = response.text
         print("Subtask creation failed")
         print("Status Code:", response.status_code)
         print("Response:", response.text)
