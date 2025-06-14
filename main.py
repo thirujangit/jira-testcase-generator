@@ -1,19 +1,25 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import os, requests
+import os
+import requests
+import json
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
-
-load_dotenv()
-app = FastAPI()
+import traceback
 
 # Load environment variables
+load_dotenv()
+
+app = FastAPI()
+
+# Environment variables
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 JIRA_EMAIL = os.getenv("JIRA_EMAIL")
 JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
-JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
 
+# Auth and headers
+JIRA_AUTH = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
 TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
 
 JIRA_HEADERS = {
@@ -34,6 +40,7 @@ def is_subtask(issue_key):
     return response.json()["fields"]["issuetype"]["subtask"]
 
 def generate_test_cases(user_story):
+    """Call Together API to generate test cases from user story."""
     payload = {
         "model": "mistralai/Mistral-7B-Instruct-v0.2",
         "messages": [
@@ -57,29 +64,33 @@ def generate_test_cases(user_story):
     return [tc.strip() for tc in response.json()['choices'][0]['message']['content'].split('\n') if tc.strip()]
 
 def create_subtask(parent_key, summary, description):
+    """Create a Jira sub-task under the given parent issue."""
     url = f"{JIRA_BASE_URL}/rest/api/3/issue"
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json"
+    }
     payload = {
         "fields": {
             "project": {"key": parent_key.split('-')[0]},
             "parent": {"key": parent_key},
-            "summary": summary[:50],
+            "summary": summary[:50],  # Jira limits summary to 255 chars, but keep short
             "description": description,
             "issuetype": {"name": "Sub-task"}
         }
     }
 
     response = requests.post(
-        f"{JIRA_BASE_URL}/rest/api/3/issue",
+        url,
         headers=headers,
         data=json.dumps(payload),
-        auth=(JIRA_EMAIL, JIRA_API_TOKEN)
+        auth=JIRA_AUTH
     )
-
 
     if response.status_code != 201:
         print("Subtask creation failed")
         print("Status Code:", response.status_code)
-        print("Response:", response.text)  # Add this to inspect the problem
+        print("Response:", response.text)
         raise Exception(f"Failed to create subtask for {parent_key}")
 
     return f"{JIRA_BASE_URL}/browse/{response.json()['key']}"
@@ -88,7 +99,9 @@ def create_subtask(parent_key, summary, description):
 def generate(request: GenerateRequest):
     try:
         if is_subtask(request.issue_key):
-            return {"error": f"Cannot generate sub-tasks under {request.issue_key} because it is already a sub-task. Use a main issue like a Story or Task."}
+            return {
+                "error": f"Cannot generate sub-tasks under {request.issue_key} because it is already a sub-task. Use a main issue like a Story or Task."
+            }
 
         test_cases = generate_test_cases(request.user_story)
         links = [create_subtask(request.issue_key, tc, tc) for tc in test_cases]
@@ -97,5 +110,7 @@ def generate(request: GenerateRequest):
             "message": f"{len(links)} test cases created under {request.issue_key}",
             "links": links
         }
+
     except Exception as e:
+        print(traceback.format_exc())
         return {"error": str(e)}
