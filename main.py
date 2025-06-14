@@ -63,11 +63,28 @@ def generate_test_cases(user_story):
     return response.json()['choices'][0]['message']['content'].strip()
 
 def update_jira_field(issue_key, test_cases_text):
-    """Update the Jira custom field with the generated test cases."""
+    """Update Jira field with ADF-formatted test cases."""
+    paragraphs = test_cases_text.strip().split('\n')
+    adf_content = {
+        "type": "doc",
+        "version": 1,
+        "content": []
+    }
+
+    for para in paragraphs:
+        if para.strip():
+            adf_content["content"].append({
+                "type": "paragraph",
+                "content": [{
+                    "type": "text",
+                    "text": para.strip()
+                }]
+            })
+
     url = f"{JIRA_BASE_URL}/rest/api/3/issue/{issue_key}"
     payload = {
         "fields": {
-            "customfield_10169": test_cases_text
+            "customfield_10169": adf_content
         }
     }
 
