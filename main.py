@@ -69,7 +69,13 @@ def create_subtask(parent_key, summary, description):
     }
 
     response = requests.post(url, json=payload, headers=JIRA_HEADERS, auth=JIRA_AUTH)
-    response.raise_for_status()
+
+    if response.status_code != 201:
+        print("Subtask creation failed")
+        print("Status Code:", response.status_code)
+        print("Response:", response.text)  # Add this to inspect the problem
+        raise Exception(f"Failed to create subtask for {parent_key}")
+
     return f"{JIRA_BASE_URL}/browse/{response.json()['key']}"
 
 @app.post("/generate")
