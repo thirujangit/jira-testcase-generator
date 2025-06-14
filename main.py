@@ -68,7 +68,13 @@ def create_subtask(parent_key, summary, description):
         }
     }
 
-    response = requests.post(url, json=payload, headers=JIRA_HEADERS, auth=JIRA_AUTH)
+    response = requests.post(
+        f"{JIRA_BASE_URL}/rest/api/3/issue",
+        headers=headers,
+        data=json.dumps(payload),
+        auth=(JIRA_EMAIL, JIRA_API_TOKEN)
+    )
+
 
     if response.status_code != 201:
         print("Subtask creation failed")
