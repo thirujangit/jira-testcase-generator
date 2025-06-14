@@ -1,14 +1,13 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
 import os, requests
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
 
 load_dotenv()
-
 app = FastAPI()
 
-# Load env vars
+# Load environment variables
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 JIRA_BASE_URL = os.getenv("JIRA_BASE_URL")
 JIRA_EMAIL = os.getenv("JIRA_EMAIL")
@@ -22,12 +21,18 @@ JIRA_HEADERS = {
     "Content-Type": "application/json"
 }
 
-# Pydantic request model
 class GenerateRequest(BaseModel):
     issue_key: str
     user_story: str
 
-# AI test case generation
+def is_subtask(issue_key):
+    """Check if the given Jira issue is a sub-task."""
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue/{issue_key}"
+    response = requests.get(url, headers=JIRA_HEADERS, auth=JIRA_AUTH)
+    if response.status_code != 200:
+        raise Exception(f"Failed to fetch issue details for {issue_key}")
+    return response.json()["fields"]["issuetype"]["subtask"]
+
 def generate_test_cases(user_story):
     payload = {
         "model": "mistralai/Mistral-7B-Instruct-v0.2",
@@ -48,11 +53,9 @@ def generate_test_cases(user_story):
         },
         json=payload
     )
-
     response.raise_for_status()
     return [tc.strip() for tc in response.json()['choices'][0]['message']['content'].split('\n') if tc.strip()]
 
-# Jira subtask creation
 def create_subtask(parent_key, summary, description):
     url = f"{JIRA_BASE_URL}/rest/api/3/issue"
     payload = {
@@ -69,14 +72,17 @@ def create_subtask(parent_key, summary, description):
     response.raise_for_status()
     return f"{JIRA_BASE_URL}/browse/{response.json()['key']}"
 
-# FastAPI POST endpoint
 @app.post("/generate")
 def generate(request: GenerateRequest):
     try:
+        if is_subtask(request.issue_key):
+            return {"error": f"Cannot generate sub-tasks under {request.issue_key} because it is already a sub-task. Use a main issue like a Story or Task."}
+
         test_cases = generate_test_cases(request.user_story)
         links = [create_subtask(request.issue_key, tc, tc) for tc in test_cases]
+
         return {
-            "message": f"{len(links)} test cases created as subtasks for {request.issue_key}",
+            "message": f"{len(links)} test cases created under {request.issue_key}",
             "links": links
         }
     except Exception as e:
