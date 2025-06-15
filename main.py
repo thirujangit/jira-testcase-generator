@@ -6,6 +6,7 @@ import json
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
 import traceback
+import re
 
 # Load environment variables
 load_dotenv()
@@ -63,7 +64,7 @@ def generate_test_cases(user_story):
     return response.json()['choices'][0]['message']['content'].strip()
 
 def update_jira_field(issue_key, test_cases_text):
-    """Update Jira field with ADF-formatted test cases."""
+    """Update Jira custom field with ADF-formatted test cases."""
     paragraphs = test_cases_text.strip().split('\n')
     adf_content = {
         "type": "doc",
@@ -98,6 +99,55 @@ def update_jira_field(issue_key, test_cases_text):
     if response.status_code != 204:
         raise Exception(f"Failed to update test cases in Jira: {response.status_code} - {response.text}")
 
+def create_subtask(parent_key: str, summary: str, description: str):
+    """Create a sub-task in Jira under the given parent issue."""
+    payload = {
+        "fields": {
+            "project": {
+                "key": parent_key.split("-")[0]  # e.g., "CRM"
+            },
+            "parent": {
+                "key": parent_key
+            },
+            "summary": summary,
+            "description": {
+                "type": "doc",
+                "version": 1,
+                "content": [{
+                    "type": "paragraph",
+                    "content": [{
+                        "type": "text",
+                        "text": description
+                    }]
+                }]
+            },
+            "issuetype": {
+                "name": "Sub-task"
+            }
+        }
+    }
+
+    url = f"{JIRA_BASE_URL}/rest/api/3/issue"
+    response = requests.post(url, headers=JIRA_HEADERS, auth=JIRA_AUTH, json=payload)
+
+    if response.status_code not in (200, 201):
+        raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
+    
+    return response.json()["key"]
+
+def split_test_cases(raw_text):
+    """Split generated test case text into individual cases."""
+    cases = re.split(r'\*\*Test Case \d+.*\*\*', raw_text)[1:]  # remove intro text
+    titles = re.findall(r'\*\*(Test Case \d+.*?)\*\*', raw_text)
+
+    result = []
+    for title, body in zip(titles, cases):
+        result.append({
+            "title": title.strip(),
+            "body": body.strip()
+        })
+    return result
+
 @app.post("/generate")
 def generate(request: GenerateRequest):
     try:
@@ -109,12 +159,21 @@ def generate(request: GenerateRequest):
         # Generate test cases
         test_cases_text = generate_test_cases(request.user_story)
 
-        # Save to Jira text field
+        # Update full test case block to Jira custom field
         update_jira_field(request.issue_key, test_cases_text)
 
+        # Extract and create individual test cases as sub-tasks
+        test_cases = split_test_cases(test_cases_text)
+
+        created_subtasks = []
+        for case in test_cases:
+            subtask_key = create_subtask(request.issue_key, case['title'], case['body'])
+            created_subtasks.append(subtask_key)
+
         return {
-            "message": f"Test cases successfully saved to {request.issue_key} under 'Generated Test Cases'.",
-            "preview": test_cases_text[:300] + "..."  # show preview
+            "message": f"{len(created_subtasks)} sub-tasks created under {request.issue_key}, and test cases saved to 'Generated Test Cases' field.",
+            "subtasks": created_subtasks,
+            "preview": test_cases_text[:300] + "..."
         }
 
     except Exception as e:
