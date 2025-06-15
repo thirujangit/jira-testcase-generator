@@ -104,7 +104,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
     payload = {
         "fields": {
             "project": {
-                "key": parent_key.split("-")[0]  # e.g., "CRM"
+                "key": parent_key.split("-")[0]
             },
             "parent": {
                 "key": parent_key
@@ -131,6 +131,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
     response = requests.post(url, headers=JIRA_HEADERS, auth=JIRA_AUTH, json=payload)
 
     if response.status_code not in (200, 201):
+        print("Sub-task creation failed with:", response.status_code, response.text)  # Log for debug
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
     
     return response.json()["key"]
@@ -156,15 +157,14 @@ def generate(request: GenerateRequest):
                 "error": f"Cannot update test cases for {request.issue_key} because it is a sub-task. Use a parent Story or Task."
             }
 
-        # Generate test cases
+        # Step 1: Generate test cases via Together API
         test_cases_text = generate_test_cases(request.user_story)
 
-        # Update full test case block to Jira custom field
+        # Step 2: Update Jira custom field
         update_jira_field(request.issue_key, test_cases_text)
 
-        # Extract and create individual test cases as sub-tasks
+        # Step 3: Split and create as sub-tasks
         test_cases = split_test_cases(test_cases_text)
-
         created_subtasks = []
         for case in test_cases:
             subtask_key = create_subtask(request.issue_key, case['title'], case['body'])
