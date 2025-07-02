@@ -111,7 +111,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
             "summary": summary[:250],
             "description": description[:1000],
             "issuetype": {
-                "name": "Sub-task"
+                "name": "Subtask"
             }
         }
     }
@@ -121,6 +121,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
 
     if response.status_code not in (200, 201):
         print("Sub-task creation failed with:", response.status_code, response.text)
+        print("Response text:", response.text)
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
     
     print("✅ Created sub-task:", response.json()["key"])
