@@ -125,7 +125,26 @@ def create_subtask(parent_key: str, summary: str, description: str):
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
     print("✅ Created sub-task:", response.json()["key"])
     return response.json()["key"]
+def split_test_cases(raw_text):
+    """Split generated test case text into individual test cases."""
+    # Match headings like **TC1_Functional_English:** as title lines
+    pattern = r'\*\*(TC\d+_[\w_]+):\*\*'
+    matches = list(re.finditer(pattern, raw_text))
 
+    result = []
+    for i in range(len(matches)):
+        title = matches[i].group(1).replace("_", " ")
+        start = matches[i].end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(raw_text)
+        body = raw_text[start:end].strip()
+        result.append({
+            "title": title,
+            "body": body
+        })
+
+    return result
+
+"""
 def split_test_cases(raw_text):
     """Split generated test case text into individual cases."""
     cases = re.split(r'\*\*Test Case \d+.*\*\*', raw_text)[1:]  # remove intro text
@@ -138,7 +157,7 @@ def split_test_cases(raw_text):
             "body": body.strip()
         })
     return result
-
+"""
 @app.post("/generate")
 def generate(request: GenerateRequest):
     try:
