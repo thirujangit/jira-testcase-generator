@@ -110,17 +110,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
                 "key": parent_key
             },
             "summary": summary,
-            "description": {
-                "type": "doc",
-                "version": 1,
-                "content": [{
-                    "type": "paragraph",
-                    "content": [{
-                        "type": "text",
-                        "text": description
-                    }]
-                }]
-            },
+            "description": description,
             "issuetype": {
                 "name": "Sub-task"
             }
@@ -133,7 +123,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
     if response.status_code not in (200, 201):
         print("Sub-task creation failed with:", response.status_code, response.text)  # Log for debug
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
-    
+    print("✅ Created sub-task:", response.json()["key"])
     return response.json()["key"]
 
 def split_test_cases(raw_text):
