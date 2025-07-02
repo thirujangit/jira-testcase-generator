@@ -127,20 +127,28 @@ def create_subtask(parent_key: str, summary: str, description: str):
     return response.json()["key"]
 
 def split_test_cases(raw_text):
-    """Split generated test case text into individual test cases."""
+    """Split generated test cases into individual sub-task format."""
+    # First try to split by bolded headings like **TC1_Functional_X:**
     pattern = r'\*\*(TC\d+_[\w_]+):\*\*'
     matches = list(re.finditer(pattern, raw_text))
 
     result = []
-    for i in range(len(matches)):
-        title = matches[i].group(1).replace("_", " ")
-        start = matches[i].end()
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(raw_text)
-        body = raw_text[start:end].strip()
-        result.append({
-            "title": title,
-            "body": body
-        })
+
+    if matches:
+        for i in range(len(matches)):
+            title = matches[i].group(1).replace("_", " ")
+            start = matches[i].end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(raw_text)
+            body = raw_text[start:end].strip()
+            result.append({"title": title, "body": body})
+    else:
+        # fallback if model didn't format it as **TC1_XYZ:**
+        print("⚠️ Pattern not matched, falling back to numbered bullets.")
+        fallback_parts = re.split(r'\n\d+\.\s+\*\*(.*?)\*\*:', raw_text)
+        for i in range(1, len(fallback_parts), 2):
+            title = fallback_parts[i].strip()
+            body = fallback_parts[i + 1].strip() if i + 1 < len(fallback_parts) else ""
+            result.append({"title": title, "body": body})
 
     return result
 
