@@ -100,7 +100,6 @@ def update_jira_field(issue_key, test_cases_text):
         raise Exception(f"Failed to update test cases in Jira: {response.status_code} - {response.text}")
 
 def create_subtask(parent_key: str, summary: str, description: str):
-    """Create a sub-task in Jira under the given parent issue."""
     payload = {
         "fields": {
             "project": {
@@ -109,8 +108,8 @@ def create_subtask(parent_key: str, summary: str, description: str):
             "parent": {
                 "key": parent_key
             },
-            "summary": summary,
-            "description": description,
+            "summary": summary[:250],
+            "description": description[:1000],
             "issuetype": {
                 "name": "Sub-task"
             }
@@ -123,6 +122,7 @@ def create_subtask(parent_key: str, summary: str, description: str):
     if response.status_code not in (200, 201):
         print("Sub-task creation failed with:", response.status_code, response.text)
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
+    
     print("✅ Created sub-task:", response.json()["key"])
     return response.json()["key"]
 
