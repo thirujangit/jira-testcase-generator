@@ -121,13 +121,13 @@ def create_subtask(parent_key: str, summary: str, description: str):
     response = requests.post(url, headers=JIRA_HEADERS, auth=JIRA_AUTH, json=payload)
 
     if response.status_code not in (200, 201):
-        print("Sub-task creation failed with:", response.status_code, response.text)  # Log for debug
+        print("Sub-task creation failed with:", response.status_code, response.text)
         raise Exception(f"Failed to create sub-task: {response.status_code} - {response.text}")
     print("✅ Created sub-task:", response.json()["key"])
     return response.json()["key"]
+
 def split_test_cases(raw_text):
     """Split generated test case text into individual test cases."""
-    # Match headings like **TC1_Functional_English:** as title lines
     pattern = r'\*\*(TC\d+_[\w_]+):\*\*'
     matches = list(re.finditer(pattern, raw_text))
 
@@ -144,20 +144,6 @@ def split_test_cases(raw_text):
 
     return result
 
-"""
-def split_test_cases(raw_text):
-    """Split generated test case text into individual cases."""
-    cases = re.split(r'\*\*Test Case \d+.*\*\*', raw_text)[1:]  # remove intro text
-    titles = re.findall(r'\*\*(Test Case \d+.*?)\*\*', raw_text)
-
-    result = []
-    for title, body in zip(titles, cases):
-        result.append({
-            "title": title.strip(),
-            "body": body.strip()
-        })
-    return result
-"""
 @app.post("/generate")
 def generate(request: GenerateRequest):
     try:
@@ -166,14 +152,10 @@ def generate(request: GenerateRequest):
                 "error": f"Cannot update test cases for {request.issue_key} because it is a sub-task. Use a parent Story or Task."
             }
 
-        # Step 1: Generate test cases via Together API
         test_cases_text = generate_test_cases(request.user_story)
-
-        # Step 2: Update Jira custom field
         update_jira_field(request.issue_key, test_cases_text)
-
-        # Step 3: Split and create as sub-tasks
         test_cases = split_test_cases(test_cases_text)
+
         created_subtasks = []
         for case in test_cases:
             subtask_key = create_subtask(request.issue_key, case['title'], case['body'])
